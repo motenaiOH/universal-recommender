@@ -10,6 +10,7 @@ organization := "com.actionml"
 
 val mahoutVersion = "0.13.0"
 
+
 val pioVersion = "0.11.0-incubating"
 
 val elasticsearch1Version = "1.7.5"
