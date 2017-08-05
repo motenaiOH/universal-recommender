@@ -259,13 +259,13 @@ class URAlgorithm(val ap: URAlgorithmParams)
   val esIndex: String = ap.indexName
   val esType: String = ap.typeName
 
-  drawInfo("Init URAlgorithm XXX", Seq(
+  drawInfo("Init URAlgorithm", Seq(
     ("══════════════════════════════", "════════════════════════════"),
-    ("App name XXX", appName),
-    ("ES index name XXX", esIndex),
-    ("ES type name XXX", esType),
-    ("RecsModel XXX", recsModel),
-    ("Event names XXX", modelEventNames),
+    ("App name", appName),
+    ("ES index name", esIndex),
+    ("ES type name", esType),
+    ("RecsModel", recsModel),
+    ("Event names", modelEventNames),
     ("══════════════════════════════", "════════════════════════════"),
     ("Random seed", randomSeed),
     ("MaxCorrelatorsPerEventType", maxCorrelatorsPerEventType),
