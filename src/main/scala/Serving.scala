@@ -31,7 +31,7 @@ class Serving
   def serve(query: Query,
             predictedResults: Seq[PredictedResult]): PredictedResult = {
 
-    val standard: Seq[Array[ItemScore]] = i match {
+    val standard: Seq[Array[ItemScore]] = query.engine.getOrElse("standard") match {
       case "standard" => {
         predictedResults.map(_.itemScores)
       }
@@ -53,10 +53,6 @@ class Serving
               ItemScore(is.item, score)
             }
           }
-      }
-
-      case _ => {
-        predictedResults.map(_.itemScores)
       }
     }
 
