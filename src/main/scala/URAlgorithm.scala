@@ -67,43 +67,6 @@ object DefaultURAlgoParams {
   val ReturnSelf = false
 }
 
-/* default values must be set in code not the case class declaration
-case class BackfillField(
-  name: Option[String] = Some(DefaultURAlgoParams.BackfillFieldName),
-  backfillType: Option[String] = Some(DefaultURAlgoParams.BackfillType), // may be 'hot', or 'trending' also
-  eventNames: Option[Seq[String]] = None, // None means use the algo eventNames list, otherwise a list of events
-  offsetDate: Option[String] = None, // used only for tests, specifies the offset date to start the duration so the most
-  // recent date for events going back by from the more recent offsetDate - duration
-  duration: Option[String] = Some(DefaultURAlgoParams.BackfillDuration)) // duration worth of events
-  // to use in calculation of backfill
-
-case class URAlgorithmParams(
-  appName: String, // filled in from engine.json
-  indexName: String, // can optionally be used to specify the elasticsearch index name
-  typeName: String, // can optionally be used to specify the elasticsearch type name
-  recsModel: Option[String] = Some(DefaultURAlgoParams.RecsModel), // "all", "collabFiltering", "backfill"
-  eventNames: Seq[String], // names used to ID all user actions
-  blacklistEvents: Option[Seq[String]] = None,// None means use the primary event, empty array means no filter
-  // number of events in user-based recs query
-  maxQueryEvents: Option[Int] = Some(DefaultURAlgoParams.MaxQueryEvents),
-  maxEventsPerEventType: Option[Int] = Some(DefaultURAlgoParams.MaxEventsPerEventType),
-  maxCorrelatorsPerEventType: Option[Int] = Some(DefaultURAlgoParams.MaxCorrelatorsPerEventType),
-  num: Option[Int] = Some(DefaultURAlgoParams.NumResults), // default max # of recs requested
-  userBias: Option[Float] = None, // will cause the default search engine boost of 1.0
-  itemBias: Option[Float] = None, // will cause the default search engine boost of 1.0
-  returnSelf: Option[Boolean] = None, // query building logic defaults this to false
-  fields: Option[Seq[Field]] = None, //defaults to no fields
-  // leave out for default or popular
-  backfillField: Option[BackfillField] = None,
-  // name of date property field for when the item is available
-  availableDateName: Option[String] = Some(DefaultURAlgoParams.AvailableDateName),
-  // name of date property field for when an item is no longer available
-  expireDateName: Option[String] = Some(DefaultURAlgoParams.ExpireDateName),
-  // used as the subject of a dateRange in queries, specifies the name of the item property
-  dateName: Option[String] = Some(DefaultURAlgoParams.DateName),
-  seed: Option[Long] = None) // seed is not used presently
-  extends Params //fixed default make it reproducible unless supplied
-  */
 
 case class RankingParams(
     name: Option[String] = None,
@@ -298,13 +261,6 @@ class URAlgorithm(val ap: URAlgorithmParams)
   def calcAll(
     data: PreparedData,
     calcPopular: Boolean = true)(implicit sc: SparkContext): NullModel = {
-
-    /*logger.info("Indicators read now creating correlators")
-    val cooccurrenceIDSs = SimilarityAnalysis.cooccurrencesIDSs(
-      data.actions.map(_._2).toArray,
-      ap.seed.getOrElse(System.currentTimeMillis()).toInt)
-      .map(_.asInstanceOf[IndexedDatasetSpark])
-    */
 
     logger.info("Actions read now creating correlators")
     val cooccurrenceIDSs = if (ap.indicators.isEmpty) { // using one global set of algo params
