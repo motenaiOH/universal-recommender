@@ -83,8 +83,8 @@ object RecommendationEngine extends EngineFactory {
       classOf[DataSource],
       classOf[Preparator],
       Map(
-        "ur" -> classOf[URAlgorithm], // IMPORTANT: "ur" must be the "name" of the parameter set in engine.json
-        "cur" -> classOf[URAlgorithm] // IMPORTANT: "cur" must be the "name" of the parameter set in engine.json
+       // "ur" -> classOf[URAlgorithm], // IMPORTANT: "ur" must be the "name" of the parameter set in engine.json
+        "cur" -> classOf[ComplementaryURAlgorithm] // IMPORTANT: "cur" must be the "name" of the parameter set in engine.json
       ),
       classOf[Serving])
   }
