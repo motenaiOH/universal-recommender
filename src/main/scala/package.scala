@@ -47,6 +47,7 @@ package object helpers {
         | /_/    \_\___|\__|_|\___/|_| |_|_|  |_|______|
         |
         |
+        | Custom by Leandro Ribeiro.
       """.stripMargin
 
     logger.info(actionML)
