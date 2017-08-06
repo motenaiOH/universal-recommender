@@ -7,7 +7,7 @@
     "params" : {
       "name": "grao_recomendacao_events",
       "appName": "grao_recomendacao",
-      "eventNames": ["purchase", "view", "category-preference", "gender-preference","color-preference"],
+      "eventNames": ["purchase"],
       "minEventsPerUser": 3
     }
   },
@@ -21,7 +21,7 @@
   "algorithms": [
     {
       "comment": "Algoritimo para recomendacao do carrinho de compras",
-      "name": "cur",
+      "name": "curalho",
       "params": {
         "appName": "grao_recomendacao",
         "indexName": "grao_compra_complementar_index",
