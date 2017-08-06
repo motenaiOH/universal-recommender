@@ -7,7 +7,7 @@
     "params" : {
       "name": "grao_recomendacao_events",
       "appName": "grao_recomendacao",
-      "eventNames": ["purchase"],
+      "eventNames": ["purchase","view","category-preference","gender-preference","color-preference"],
       "minEventsPerUser": 3
     }
   },
@@ -21,7 +21,7 @@
   "algorithms": [
     {
       "comment": "Algoritimo para recomendacao do carrinho de compras",
-      "name": "curalho",
+      "name": "cur",
       "params": {
         "appName": "grao_recomendacao",
         "indexName": "grao_compra_complementar_index",
@@ -36,7 +36,42 @@
         "expireDateName": "expires",
         "dateName": "date",
         "num": 20,
-	"seed": 3
+	      "seed": 3
+      }
+    },{
+      "comment": "simplest setup where all values are default, popularity based backfill, must add eventsNames",
+      "name": "ur",
+      "params": {
+        "appName": "grao_recomendacao",
+        "indexName": "grao_index",
+        "typeName": "items",
+        "comment": "must have data for the first event or the model will not build, other events are optional",
+        "indicators": [
+          {
+            "name": "purchase",
+            "minLLR": 5
+          },{
+            "name": "view",
+            "maxCorrelatorsPerItem": 50,
+            "minLLR": 5
+          },{
+            "name": "category-preference",
+            "maxCorrelatorsPerItem": 50,
+            "minLLR": 5
+          },{
+            "name": "gender-preference",
+            "maxCorrelatorsPerItem": 1
+          },{
+            "name": "color-preference",
+            "maxCorrelatorsPerItem": 3,
+            "minLLR": 1
+          }
+        ],    
+        "availableDateName": "available",
+        "expireDateName": "expires",
+        "dateName": "date",
+        "num": 10,
+        "seed": 3
       }
     }
   ]
