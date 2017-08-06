@@ -26,6 +26,7 @@ import org.apache.predictionio.controller.LServing
 class Serving
     extends LServing[Query, PredictedResult] {
 
+
   override
   def serve(query: Query,
             predictedResults: Seq[PredictedResult]): PredictedResult = {
@@ -51,12 +52,13 @@ class Serving
         }
     }
 
+
     val combined = standard.flatten
       .groupBy(_.item)
       .mapValues(itemScores => itemScores.map(_.score).reduce(_ + _))
       .toArray
       .sortBy(_._2)(Ordering.Double.reverse)
-      //.take(query.num)
+      .take( query.num.getOrElse(1) )
       .map { case (k,v) => ItemScore(k, v) }
 
 

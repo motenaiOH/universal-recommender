@@ -43,6 +43,7 @@ case class Query(
   blacklistItems: Option[List[String]] = None, // default: whatever is in algorithm params or None
   returnSelf: Option[Boolean] = None, // means for an item query should the item itself be returned, defaults
   // to what is in the algorithm params or false
+  engine: Option[Int] = None,
   num: Option[Int] = None, // default: whatever is in algorithm params, which itself has a default--probably 20
   eventNames: Option[List[String]], // names used to ID all user actions
   withRanks: Option[Boolean] = None) // Add to ItemScore rank fields values, default fasle
@@ -83,7 +84,7 @@ object RecommendationEngine extends EngineFactory {
       classOf[DataSource],
       classOf[Preparator],
       Map(
-       // "ur" -> classOf[URAlgorithm], // IMPORTANT: "ur" must be the "name" of the parameter set in engine.json
+        "ur" -> classOf[URAlgorithm], // IMPORTANT: "ur" must be the "name" of the parameter set in engine.json
         "cur" -> classOf[ComplementaryURAlgorithm] // IMPORTANT: "cur" must be the "name" of the parameter set in engine.json
       ),
       classOf[Serving])
