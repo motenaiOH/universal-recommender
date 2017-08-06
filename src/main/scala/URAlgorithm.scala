@@ -111,6 +111,7 @@ case class URAlgorithmParams(
   maxQueryEvents: Option[Int] = None,
   maxEventsPerEventType: Option[Int] = None,
   maxCorrelatorsPerEventType: Option[Int] = None,
+  engine: Option[Int] = None,
   num: Option[Int] = None, // default max # of recs requested
   userBias: Option[Float] = None, // will cause the default search engine boost of 1.0
   itemBias: Option[Float] = None, // will cause the default search engine boost of 1.0
