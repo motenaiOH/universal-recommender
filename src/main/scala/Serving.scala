@@ -24,32 +24,40 @@ import breeze.stats.MeanAndVariance
 import org.apache.predictionio.controller.LServing
 
 class Serving
-    extends LServing[Query, PredictedResult] {
+  extends LServing[Query, PredictedResult] {
 
 
   override
   def serve(query: Query,
             predictedResults: Seq[PredictedResult]): PredictedResult = {
 
-    val standard: Seq[Array[ItemScore]] = if (query.num == 1) {
-      predictedResults.map(_.itemScores)
-    } else {
-      val mvList: Seq[MeanAndVariance] = predictedResults.map { pr =>
-        meanAndVariance(pr.itemScores.map(_.score))
+    val standard: Seq[Array[ItemScore]] = i match {
+      case "standard" => {
+        predictedResults.map(_.itemScores)
       }
 
-      predictedResults.zipWithIndex
-        .map { case (pr, i) =>
-          pr.itemScores.map { is =>
-            val score = if (mvList(i).stdDev == 0) {
-              0
-            } else {
-              (is.score - mvList(i).mean) / mvList(i).stdDev
-            }
-
-            ItemScore(is.item, score)
-          }
+      case "complementary" => {
+        val mvList: Seq[MeanAndVariance] = predictedResults.map { pr =>
+          meanAndVariance(pr.itemScores.map(_.score))
         }
+
+        predictedResults.zipWithIndex
+          .map { case (pr, i) =>
+            pr.itemScores.map { is =>
+              val score = if (mvList(i).stdDev == 0) {
+                0
+              } else {
+                (is.score - mvList(i).mean) / mvList(i).stdDev
+              }
+
+              ItemScore(is.item, score)
+            }
+          }
+      }
+
+      case _ => {
+        predictedResults.map(_.itemScores)
+      }
     }
 
 
@@ -58,8 +66,8 @@ class Serving
       .mapValues(itemScores => itemScores.map(_.score).reduce(_ + _))
       .toArray
       .sortBy(_._2)(Ordering.Double.reverse)
-      .take( query.num.getOrElse(1) )
-      .map { case (k,v) => ItemScore(k, v) }
+      .take(query.num.getOrElse(6))
+      .map { case (k, v) => ItemScore(k, v) }
 
 
     PredictedResult(combined)
