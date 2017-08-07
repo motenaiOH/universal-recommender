@@ -477,6 +477,8 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       Seq.empty
     }
 
+    logger.warn(itemSet);
+
     val boostedMetadata = getBoostedMetadata(query)
     val allBoostedCorrelators = recentUserHistory ++ similarItems ++ boostedMetadata ++ itemSet
 
