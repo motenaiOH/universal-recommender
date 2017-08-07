@@ -361,7 +361,8 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
             ItemScore(hit.getId, hit.getScore.toDouble)
           }
         }
-        logger.info(s"Results: ${searchHits.getHits.length} retrieved of a possible ${searchHits.totalHits()}")
+        logger.info(s"Query: ${queryStr} ")
+        logger.info(s"Results [${query.engine.getOrElse("Null")}]: ${searchHits.getHits.length} retrieved of a possible ${searchHits.totalHits()}")
         recs
 
       case _ =>
