@@ -420,6 +420,8 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       // create a list of all query correlators that can have a bias (boost or filter) attached
       val (boostable, events) = getBiasedRecentUserActions(query)
 
+
+
       // since users have action history and items have correlators and both correspond to the same "actions" like
       // purchase or view, we'll pass both to the query if the user history or items correlators are empty
       // then metadata or backfill must be relied on to return results.
@@ -429,6 +431,9 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       val mustNot = buildQueryMustNot(query, events)
       val sort = buildQuerySort()
 
+      //todo create a setup var to define the accurace level
+      val minimum_should_match = 4
+
       val json =
         ("size" -> numRecs) ~
           ("query" ->
@@ -436,7 +441,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
               ("should" -> should) ~
                 ("must" -> must) ~
                 ("must_not" -> mustNot) ~
-                ("minimum_should_match" -> 1))) ~
+                ("minimum_should_match" -> minimum_should_match))) ~
           ("sort" -> sort)
 
       val compactJson = compact(render(json))
@@ -477,12 +482,22 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       Seq.empty
     }
 
+    logger.warn(itemSet);
+
     val boostedMetadata = getBoostedMetadata(query)
     val allBoostedCorrelators = recentUserHistory ++ similarItems ++ boostedMetadata ++ itemSet
 
     val shouldFields: Seq[JValue] = allBoostedCorrelators.map {
-      case BoostableCorrelators(actionName, itemIDs, boost) =>
-        render("terms" -> (actionName -> itemIDs) ~ ("boost" -> boost))
+      case BoostableCorrelators(actionName, itemIDs, boost) => {
+        //todo: get a config var to define this comportament
+        //render("terms" -> (actionName -> itemIDs) ~ ("boost" -> boost))
+        var actionPureName = ""
+        for (v <- actionName.split("-")) {
+          if(actionPureName == "") { actionPureName = v }
+        }
+
+        render("terms" -> (actionPureName -> itemIDs) ~ ("boost" -> boost))
+      }
     }
 
     // todo: this should not be sent if there are no rankings, causes 0 scores to be returned as backfill even
