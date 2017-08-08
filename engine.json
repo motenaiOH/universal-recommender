@@ -16,31 +16,14 @@
     "spark.kryo.registrator": "org.apache.mahout.sparkbindings.io.MahoutKryoRegistrator",
     "spark.kryo.referenceTracking": "false",
     "spark.kryoserializer.buffer": "300m",
+    "spark.driver.memory": "2g",
+    "spark.executor.memory": "24g",
     "es.index.auto.create": "true"
   },
   "algorithms": [
     {
-      "comment": "Algoritimo para recomendacao do carrinho de compras",
-      "name": "cur",
-      "params": {
-        "appName": "grao_recomendacao",
-        "indexName": "grao_compra_complementar_index",
-        "typeName": "items",
-        "comment": "must have data for the first event or the model will not build, other events are optional",
-        "indicators": [
-          {
-            "name": "purchase"
-          }
-        ],    
-        "availableDateName": "available",
-        "expireDateName": "expires",
-        "dateName": "date",
-        "num": 20,
-	      "seed": 3
-      }
-    },{
       "comment": "simplest setup where all values are default, popularity based backfill, must add eventsNames",
-      "name": "ur",
+      "name": "cur",
       "params": {
         "appName": "grao_recomendacao",
         "indexName": "grao_index",
@@ -48,8 +31,7 @@
         "comment": "must have data for the first event or the model will not build, other events are optional",
         "indicators": [
           {
-            "name": "purchase",
-            "minLLR": 5
+            "name": "purchase",          
           },{
             "name": "view",
             "maxCorrelatorsPerItem": 50,
@@ -58,20 +40,49 @@
             "name": "category-preference",
             "maxCorrelatorsPerItem": 50,
             "minLLR": 5
-          },{
+          },{	
             "name": "gender-preference",
             "maxCorrelatorsPerItem": 1
           },{
             "name": "color-preference",
             "maxCorrelatorsPerItem": 3,
-            "minLLR": 1
+            "minLLR": 5
           }
         ],    
         "availableDateName": "available",
         "expireDateName": "expires",
         "dateName": "date",
         "num": 10,
-        "seed": 3
+        "seed": 3,
+        "recsModel": "all",
+        "rankings": [
+          {
+            "name": "popRank",
+            "type": "popular",
+            "eventNames": ["purchase", "view"],
+            "duration": "30 days",
+            "endDate": "ISO8601-date"
+          },
+          {
+            "name": "trendRank",
+            "type": "trending",
+            "eventNames": ["purchase", "view"],
+            "duration": "3 days"
+          },
+          {
+            "name": "hotRank",
+            "type": "hot",
+            "duration": "3 days"
+          },
+          {
+            "name": "preferredRank",
+            "type": "userDefined"
+          },
+          {
+            "name": "uniqueRank",
+            "type": "random"
+          }
+        ],
       }
     }
   ]
