@@ -56,13 +56,14 @@ class Serving
       }
     }
 
+    val qtd = if ( query.engine.getOrElse("Null") == "standard" ) 5 else 10
 
     val combined = standard.flatten
       .groupBy(_.item)
       .mapValues(itemScores => itemScores.map(_.score).reduce(_ + _))
       .toArray
       .sortBy(_._2)(Ordering.Double.reverse)
-      .take(query.num.getOrElse(6))
+      .take(query.num.getOrElse(qtd))
       .map { case (k, v) => ItemScore(k, v) }
 
 
