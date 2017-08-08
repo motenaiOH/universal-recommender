@@ -429,10 +429,18 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       val should = buildQueryShould(query, boostable)
       val must = buildQueryMust(query, boostable)
       val mustNot = buildQueryMustNot(query, events)
-      val sort = buildQuerySort()
+      val sort = buildQuerySort( query.itemSet.nonEmpty )
+
+      var count = 0
+      boostable.map {
+        case BoostableCorrelators(actionName, itemIDs, boost) => {
+          count += itemIDs.length
+        }
+      }
 
       //todo create a setup var to define the accurace level
-      val minimum_should_match = 4
+      var minimum_should_match = if (count < 10) { 1 } else { 3 }
+      minimum_should_match = if(query.itemSet.nonEmpty){2}else{minimum_should_match}
 
       val json =
         ("size" -> numRecs) ~
@@ -568,12 +576,16 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
   }
 
   /** Build sort query part */
-  def buildQuerySort(): Seq[JValue] = if (recsModel == RecsModels.All || recsModel == RecsModels.BF) {
+  def buildQuerySort(hasItemset : Boolean): Seq[JValue] = if (recsModel == RecsModels.All || recsModel == RecsModels.BF) {
     val sortByScore: Seq[JValue] = Seq(parse("""{"_score": {"order": "desc"}}"""))
     val sortByRanks: Seq[JValue] = rankingFieldNames map { fieldName =>
       parse(s"""{ "$fieldName": { "unmapped_type": "double", "order": "desc" } }""")
     }
-    sortByScore ++ sortByRanks
+
+    if(!hasItemset)
+      sortByScore ++ sortByRanks
+    else
+      sortByRanks ++ sortByScore
   } else {
     Seq.empty
   }
