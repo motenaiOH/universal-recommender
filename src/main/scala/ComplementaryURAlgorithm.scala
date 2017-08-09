@@ -18,6 +18,7 @@
 package com.actionml
 
 import java.util
+import scala.collection.JavaConversions._
 
 import grizzled.slf4j.Logger
 import org.apache.predictionio.controller.{ P2LAlgorithm, Params }
@@ -38,16 +39,15 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
 import scala.language.{ implicitConversions, postfixOps }
 
-
 /** Creates cooccurrence, cross-cooccurrence and eventually content correlators with
-  *  [[org.apache.mahout.math.cf.SimilarityAnalysis]] The analysis part of the recommender is
-  *  done here but the algorithm can predict only when the coocurrence data is indexed in a
-  *  search engine like Elasticsearch. This is done in URModel.save.
-  *
-  *  @param ap taken from engine.json to describe limits and event types
-  */
+ *  [[org.apache.mahout.math.cf.SimilarityAnalysis]] The analysis part of the recommender is
+ *  done here but the algorithm can predict only when the coocurrence data is indexed in a
+ *  search engine like Elasticsearch. This is done in URModel.save.
+ *
+ *  @param ap taken from engine.json to describe limits and event types
+ */
 class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
-  extends P2LAlgorithm[PreparedData, NullModel, Query, PredictedResult] {
+    extends P2LAlgorithm[PreparedData, NullModel, Query, PredictedResult] {
 
   @transient lazy implicit val logger: Logger = Logger[this.type]
 
@@ -56,6 +56,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       FilterCorrelators(actionName, itemIDs)
     }
   }
+
   case class FilterCorrelators(actionName: String, itemIDs: Seq[ItemID])
   case class ExclusionFields(propertyName: String, values: Seq[String])
 
@@ -170,8 +171,8 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
 
   /** Calculates recs model as well as popularity model */
   def calcAll(
-               data: PreparedData,
-               calcPopular: Boolean = true)(implicit sc: SparkContext): NullModel = {
+    data: PreparedData,
+    calcPopular: Boolean = true)(implicit sc: SparkContext): NullModel = {
 
     logger.info("Actions read now creating correlators")
     val cooccurrenceIDSs = if (ap.indicators.isEmpty) { // using one global set of algo params
@@ -224,9 +225,9 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
   }
 
   /** This function creates a URModel from an existing index in Elasticsearch + new popularity ranking
-    *  It is used when you want to re-calc the popularity model between training on useage data. It leaves
-    *  the part of the model created from usage data alone and only modifies the popularity ranking.
-    */
+   *  It is used when you want to re-calc the popularity model between training on useage data. It leaves
+   *  the part of the model created from usage data alone and only modifies the popularity ranking.
+   */
   def calcPop(data: PreparedData)(implicit sc: SparkContext): NullModel = {
 
     // Aggregating all $set/$unsets properties, which are attached to items
@@ -257,85 +258,85 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
   //testing, this only effects which events are used in queries.
 
   /** Return a list of items recommended for a user identified in the query
-    *  The ES json query looks like this:
-    *  {
-    *    "size": 20
-    *    "query": {
-    *      "bool": {
-    *        "should": [
-    *          {
-    *            "terms": {
-    *              "rate": ["0", "67", "4"]
-    *            }
-    *          },
-    *          {
-    *            "terms": {
-    *              "buy": ["0", "32"],
-    *              "boost": 2
-    *            }
-    *          },
-    *          { // categorical boosts
-    *            "terms": {
-    *              "category": ["cat1"],
-    *              "boost": 1.05
-    *            }
-    *          }
-    *        ],
-    *        "must": [ // categorical filters
-    *          {
-    *            "terms": {
-    *              "category": ["cat1"],
-    *              "boost": 0
-    *            }
-    *          },
-    *         {
-    *        "must_not": [//blacklisted items
-    *          {
-    *            "ids": {
-    *              "values": ["items-id1", "item-id2", ...]
-    *            }
-    *          },
-    *         {
-    *           "constant_score": {// date in query must fall between the expire and available dates of an item
-    *             "filter": {
-    *               "range": {
-    *                 "availabledate": {
-    *                   "lte": "2015-08-30T12:24:41-07:00"
-    *                 }
-    *               }
-    *             },
-    *             "boost": 0
-    *           }
-    *         },
-    *         {
-    *           "constant_score": {// date range filter in query must be between these item property values
-    *             "filter": {
-    *               "range" : {
-    *                 "expiredate" : {
-    *                   "gte": "2015-08-15T11:28:45.114-07:00"
-    *                   "lt": "2015-08-20T11:28:45.114-07:00"
-    *                 }
-    *               }
-    *             }, "boost": 0
-    *           }
-    *         },
-    *         {
-    *           "constant_score": { // this orders popular items for backfill
-    *              "filter": {
-    *                 "match_all": {}
-    *              },
-    *              "boost": 0.000001 // must have as least a small number to be boostable
-    *           }
-    *        }
-    *      }
-    *    }
-    *  }
-    *
-    *  @param model <strong>Ignored!</strong> since the model is already in Elasticsearch
-    *  @param query contains query spec
-    *  @todo Need to prune that query to minimum required for data include, for instance no need for the popularity
-    *       ranking if no PopModel is being used, same for "must" clause and dates.
-    */
+   *  The ES json query looks like this:
+   *  {
+   *    "size": 20
+   *    "query": {
+   *      "bool": {
+   *        "should": [
+   *          {
+   *            "terms": {
+   *              "rate": ["0", "67", "4"]
+   *            }
+   *          },
+   *          {
+   *            "terms": {
+   *              "buy": ["0", "32"],
+   *              "boost": 2
+   *            }
+   *          },
+   *          { // categorical boosts
+   *            "terms": {
+   *              "category": ["cat1"],
+   *              "boost": 1.05
+   *            }
+   *          }
+   *        ],
+   *        "must": [ // categorical filters
+   *          {
+   *            "terms": {
+   *              "category": ["cat1"],
+   *              "boost": 0
+   *            }
+   *          },
+   *         {
+   *        "must_not": [//blacklisted items
+   *          {
+   *            "ids": {
+   *              "values": ["items-id1", "item-id2", ...]
+   *            }
+   *          },
+   *         {
+   *           "constant_score": {// date in query must fall between the expire and available dates of an item
+   *             "filter": {
+   *               "range": {
+   *                 "availabledate": {
+   *                   "lte": "2015-08-30T12:24:41-07:00"
+   *                 }
+   *               }
+   *             },
+   *             "boost": 0
+   *           }
+   *         },
+   *         {
+   *           "constant_score": {// date range filter in query must be between these item property values
+   *             "filter": {
+   *               "range" : {
+   *                 "expiredate" : {
+   *                   "gte": "2015-08-15T11:28:45.114-07:00"
+   *                   "lt": "2015-08-20T11:28:45.114-07:00"
+   *                 }
+   *               }
+   *             }, "boost": 0
+   *           }
+   *         },
+   *         {
+   *           "constant_score": { // this orders popular items for backfill
+   *              "filter": {
+   *                 "match_all": {}
+   *              },
+   *              "boost": 0.000001 // must have as least a small number to be boostable
+   *           }
+   *        }
+   *      }
+   *    }
+   *  }
+   *
+   *  @param model <strong>Ignored!</strong> since the model is already in Elasticsearch
+   *  @param query contains query spec
+   *  @todo Need to prune that query to minimum required for data include, for instance no need for the popularity
+   *       ranking if no PopModel is being used, same for "must" clause and dates.
+   */
   def predict(model: NullModel, query: Query): PredictedResult = {
 
     queryEventNames = query.eventNames.getOrElse(modelEventNames) // eventNames in query take precedence
@@ -380,11 +381,11 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
   }
 
   /** Calculate all fields and items needed for ranking.
-    *
-    *  @param fieldsRDD all items with their fields
-    *  @param sc the current Spark context
-    *  @return
-    */
+   *
+   *  @param fieldsRDD all items with their fields
+   *  @param sc the current Spark context
+   *  @return
+   */
   def getRanksRDD(fieldsRDD: RDD[(ItemID, ItemProps)])(implicit sc: SparkContext): RDD[(ItemID, ItemProps)] = {
     val popModel = PopModel(fieldsRDD)
     val rankRDDs: Seq[(String, RDD[(ItemID, Double)])] = rankingsParams map { rankingParams =>
@@ -412,15 +413,13 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
 
   /** Build a query from default algorithms params and the query itself taking into account defaults */
   def buildQuery(
-                  ap: URAlgorithmParams,
-                  query: Query,
-                  backfillFieldNames: Seq[String] = Seq.empty): (String, Seq[Event]) = {
+    ap: URAlgorithmParams,
+    query: Query,
+    backfillFieldNames: Seq[String] = Seq.empty): (String, Seq[Event]) = {
 
     try {
       // create a list of all query correlators that can have a bias (boost or filter) attached
       val (boostable, events) = getBiasedRecentUserActions(query)
-
-
 
       // since users have action history and items have correlators and both correspond to the same "actions" like
       // purchase or view, we'll pass both to the query if the user history or items correlators are empty
@@ -429,7 +428,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       val should = buildQueryShould(query, boostable)
       val must = buildQueryMust(query, boostable)
       val mustNot = buildQueryMustNot(query, events)
-      val sort = buildQuerySort( query.itemSet.nonEmpty )
+      val sort = buildQuerySort(query.itemSet.nonEmpty)
 
       var count = 0
       boostable.map {
@@ -438,19 +437,19 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
         }
       }
 
-      //todo create a setup var to define the accurace level
-      var minimum_should_match = if (count < 10) { 1 } else { 3 }
-      minimum_should_match = if(query.itemSet.nonEmpty){2}else{minimum_should_match}
+      // var minimum_should_match = if(count > 0) { count / ( query.precision.getOrElse( count )) } else { 1 };
+      var minimum_should_match = (query.precision.getOrElse(1) + ((count - (count % 10)) / 20))
+      minimum_should_match = if (query.itemSet.nonEmpty) { 2 } else { minimum_should_match }
 
       val json =
         ("size" -> numRecs) ~
           ("query" ->
             ("bool" ->
               ("should" -> should) ~
-                ("must" -> must) ~
-                ("must_not" -> mustNot) ~
-                ("minimum_should_match" -> minimum_should_match))) ~
-          ("sort" -> sort)
+              ("must" -> must) ~
+              ("must_not" -> mustNot) ~
+              ("minimum_should_match" -> minimum_should_match))) ~
+              ("sort" -> sort)
 
       val compactJson = compact(render(json))
 
@@ -459,6 +458,33 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
     } catch {
       case e: IllegalArgumentException => ("", Seq.empty[Event])
     }
+  }
+
+  def getItemCategory(query: Query): Seq[Object] = {
+    val itens = query.itemSet.getOrEmpty
+    if (itens.nonEmpty) {
+
+      var result = if (itens.nonEmpty) {
+        itens.map { item =>
+          val m = EsClient.getSource(esIndex, esType, item)
+          if (m != null) {
+            val s: Seq[String] = m.get("category").asInstanceOf[util.ArrayList[String]].asScala
+            val t: String = s(0)
+
+            //m.get("category").asInstanceOf[util.ArrayList[String]].asScala
+            t
+          } else {
+            Seq.empty
+          }
+        }
+      } else {
+        Seq.empty
+      }
+
+      result
+    } else {
+      Seq.empty[Object]
+    } // no item specified
   }
 
   /** Build should query part */
@@ -493,17 +519,27 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
     logger.warn(itemSet);
 
     val boostedMetadata = getBoostedMetadata(query)
-    val allBoostedCorrelators = recentUserHistory ++ similarItems ++ boostedMetadata ++ itemSet
+    //val allBoostedCorrelators = recentUserHistory ++ similarItems ++ boostedMetadata ++ itemSet
+    val allBoostedCorrelators = recentUserHistory ++ similarItems ++ boostedMetadata
 
-    val shouldFields: Seq[JValue] = allBoostedCorrelators.map {
+    var notEmptyBoostedCorrelators: Seq[BoostableCorrelators] = Seq.empty
+    allBoostedCorrelators.map {
+      case BoostableCorrelators(actionName, itemIDs, boost) => {
+        if (itemIDs.length > 0) {
+          //logger.info(s"${actionName}")
+          notEmptyBoostedCorrelators = notEmptyBoostedCorrelators :+ BoostableCorrelators(actionName, itemIDs, boost)
+        }
+      }
+    }
+
+    val shouldFields: Seq[JValue] = notEmptyBoostedCorrelators.map {
       case BoostableCorrelators(actionName, itemIDs, boost) => {
         //todo: get a config var to define this comportament
         //render("terms" -> (actionName -> itemIDs) ~ ("boost" -> boost))
         var actionPureName = ""
         for (v <- actionName.split("-")) {
-          if(actionPureName == "") { actionPureName = v }
+          if (actionPureName == "") { actionPureName = v }
         }
-
         render("terms" -> (actionPureName -> itemIDs) ~ ("boost" -> boost))
       }
     }
@@ -550,7 +586,28 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       case FilterCorrelators(actionName, itemIDs) =>
         render("terms" -> (actionName -> itemIDs) ~ ("boost" -> 0))
     }
-    mustFields ++ filteringDateRange
+
+    val itemSet: Seq[BoostableCorrelators] = if (query.itemSet.nonEmpty) {
+      if (query.item.nonEmpty || query.user.nonEmpty) {
+        logger.warn("ItemSets should not be mixed with user or item-based queries. This will produce unpredicable " +
+          "results.")
+      }
+      Seq(BoostableCorrelators(modelEventNames.head, query.itemSet.get, query.itemSetBias))
+    } else {
+      Seq.empty
+    }
+
+    val itemSetFields: Seq[JValue] = itemSet.map {
+      case BoostableCorrelators(actionName, itemIDs, boost) => {
+        render("terms" -> (actionName -> itemIDs) ~ ("boost" -> 0))
+      }
+    }
+
+    mustFields ++ filteringDateRange ++ itemSetFields
+  }
+
+  def Buffer(data: String) {
+    data
   }
 
   /** Build not must query part */
@@ -560,7 +617,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
     val mustNotItems: JValue = render(
       "ids" ->
         ("values" -> getExcludedItems(events, query)) ~
-          ("boost" -> 0))
+        ("boost" -> 0))
 
     // then get the properties used in must_not clause
     val exclusionFields = query.fields.getOrElse(Seq.empty).filter(_.bias == 0)
@@ -569,20 +626,37 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
         render(
           "terms" ->
             (name -> value) ~
-              ("boost" -> 0))
+            ("boost" -> 0))
     }
 
-    exclusionProperties :+ mustNotItems
+    val categoryItems: Seq[Object] = if (query.itemSet.nonEmpty) {
+      getItemCategory(query)
+    } else {
+      Seq.empty
+    }
+
+    var categories: Seq[String] = Seq.empty
+    categoryItems.map { a =>
+      val strCat: String = a.asInstanceOf[String]
+      categories = categories :+ strCat
+    }
+
+    for (i <- 0 until categoryItems.length) {
+      val b = categoryItems(i)
+    }
+
+    val mustNotCategories: JValue = render("terms" -> ("category" -> categories) ~ ("boost" -> 0))
+    exclusionProperties :+ mustNotItems :+ mustNotCategories
   }
 
   /** Build sort query part */
-  def buildQuerySort(hasItemset : Boolean): Seq[JValue] = if (recsModel == RecsModels.All || recsModel == RecsModels.BF) {
+  def buildQuerySort(hasItemset: Boolean): Seq[JValue] = if (recsModel == RecsModels.All || recsModel == RecsModels.BF) {
     val sortByScore: Seq[JValue] = Seq(parse("""{"_score": {"order": "desc"}}"""))
     val sortByRanks: Seq[JValue] = rankingFieldNames map { fieldName =>
       parse(s"""{ "$fieldName": { "unmapped_type": "double", "order": "desc" } }""")
     }
 
-    if(!hasItemset)
+    if (!hasItemset)
       sortByScore ++ sortByRanks
     else
       sortByRanks ++ sortByScore
@@ -775,7 +849,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       Seq(parse(range))
     } else if (ap.availableDateName.nonEmpty && ap.expireDateName.nonEmpty) { // use the query date or system date
       val availableDate = ap.availableDateName.get // never None
-    val expireDate = ap.expireDateName.get
+      val expireDate = ap.expireDateName.get
       val available = s"""
                          |{
                          |  "constant_score": {

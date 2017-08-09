@@ -24,12 +24,11 @@ import breeze.stats.MeanAndVariance
 import org.apache.predictionio.controller.LServing
 
 class Serving
-  extends LServing[Query, PredictedResult] {
+    extends LServing[Query, PredictedResult] {
 
-
-  override
-  def serve(query: Query,
-            predictedResults: Seq[PredictedResult]): PredictedResult = {
+  override def serve(
+    query: Query,
+    predictedResults: Seq[PredictedResult]): PredictedResult = {
 
     val standard: Seq[Array[ItemScore]] = query.engine.getOrElse("standard") match {
       case "standard" => {
@@ -42,21 +41,22 @@ class Serving
         }
 
         predictedResults.zipWithIndex
-          .map { case (pr, i) =>
-            pr.itemScores.map { is =>
-              val score = if (mvList(i).stdDev == 0) {
-                0
-              } else {
-                (is.score - mvList(i).mean) / mvList(i).stdDev
-              }
+          .map {
+            case (pr, i) =>
+              pr.itemScores.map { is =>
+                val score = if (mvList(i).stdDev == 0) {
+                  0
+                } else {
+                  (is.score - mvList(i).mean) / mvList(i).stdDev
+                }
 
-              ItemScore(is.item, score)
-            }
+                ItemScore(is.item, score)
+              }
           }
       }
     }
 
-    val qtd = if ( query.engine.getOrElse("Null") == "standard" ) 5 else 10
+    val qtd = if (query.engine.getOrElse("Null") == "standard") 5 else 10
 
     val combined = standard.flatten
       .groupBy(_.item)
@@ -65,7 +65,6 @@ class Serving
       .sortBy(_._2)(Ordering.Double.reverse)
       .take(query.num.getOrElse(qtd))
       .map { case (k, v) => ItemScore(k, v) }
-
 
     PredictedResult(combined)
   }

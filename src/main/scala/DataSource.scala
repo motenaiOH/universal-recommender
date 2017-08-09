@@ -64,7 +64,7 @@ class DataSource(val dsp: DataSourceParams)
   /** Reads events from PEventStore and create and RDD for each */
   override def readTraining(sc: SparkContext): TrainingData = {
 
-      val eventNames = dsp.eventNames
+    val eventNames = dsp.eventNames
 
     // beware! the following call most likely will alter the event stream in the DB!
     cleanPersistedPEvents(sc) // broken in apache-pio v0.10.0-incubating it erases all data!!!!!!

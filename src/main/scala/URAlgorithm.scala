@@ -67,7 +67,6 @@ object DefaultURAlgoParams {
   val ReturnSelf = false
 }
 
-
 case class RankingParams(
     name: Option[String] = None,
     `type`: Option[String] = None, // See [[com.actionml.BackfillType]]
