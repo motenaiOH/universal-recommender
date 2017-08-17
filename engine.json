@@ -35,17 +35,21 @@
           },{
             "name": "view",
             "maxCorrelatorsPerItem": 50,
+            "maxItemsPerUser":5,
             "minLLR": 5
           },{
             "name": "category-preference",
             "maxCorrelatorsPerItem": 50,
+            "maxItemsPerUser":3,
             "minLLR": 5
           },{	
             "name": "gender-preference",
+            "maxItemsPerUser":1,
             "maxCorrelatorsPerItem": 1
           },{
             "name": "color-preference",
             "maxCorrelatorsPerItem": 3,
+            "maxItemsPerUser":2,
             "minLLR": 5
           }
         ],    
@@ -66,7 +70,7 @@
           {
             "name": "trendRank",
             "type": "trending",
-            "eventNames": ["purchase", "view"],
+            "eventNames": ["purchase"],
             "duration": "3 days"
           },
           {

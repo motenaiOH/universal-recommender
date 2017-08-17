@@ -337,11 +337,20 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
    *  @todo Need to prune that query to minimum required for data include, for instance no need for the popularity
    *       ranking if no PopModel is being used, same for "must" clause and dates.
    */
+
+  def time[R](block: => R): R = {
+    val t0 = System.nanoTime()
+    val result = block // call-by-name
+    val t1 = System.nanoTime()
+    println("Elapsed time: " + ((t1 - t0) / 1000000000) + "' s")
+    result
+  }
+
   def predict(model: NullModel, query: Query): PredictedResult = {
 
-    queryEventNames = query.eventNames.getOrElse(modelEventNames) // eventNames in query take precedence
+    queryEventNames = query.eventNames.getOrElse(modelEventNames) // eventNames in query take precedence,
 
-    val (queryStr, blacklist) = buildQuery(ap, query, rankingFieldNames)
+    val (queryStr, blacklist) = time { buildQuery(ap, query, rankingFieldNames) }
     val searchHitsOpt = EsClient.search(queryStr, esIndex, queryEventNames)
 
     val withRanks = query.withRanks.getOrElse(false)
@@ -419,15 +428,18 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
 
     try {
       // create a list of all query correlators that can have a bias (boost or filter) attached
-      val (boostable, events) = getBiasedRecentUserActions(query)
 
+      val (boostable, events) = getBiasedRecentUserActions(query)
       // since users have action history and items have correlators and both correspond to the same "actions" like
       // purchase or view, we'll pass both to the query if the user history or items correlators are empty
       // then metadata or backfill must be relied on to return results.
       val numRecs = query.num.getOrElse(limit)
       val should = buildQueryShould(query, boostable)
+
       val must = buildQueryMust(query, boostable)
+
       val mustNot = buildQueryMustNot(query, events)
+
       val sort = buildQuerySort(query.itemSet.nonEmpty)
 
       var count = 0
@@ -438,8 +450,15 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       }
 
       // var minimum_should_match = if(count > 0) { count / ( query.precision.getOrElse( count )) } else { 1 };
-      var minimum_should_match = (query.precision.getOrElse(1) + ((count - (count % 10)) / 20))
+      //var minimum_should_match = (query.precision.getOrElse(1) + ((count - (count % 10)) / 40))
+      var precision = 30
+      var user_accurace_match = (count * precision) / 100
+
+      var max_match = 10
+      var minimum_should_match = (max_match * user_accurace_match) / 100
       minimum_should_match = if (query.itemSet.nonEmpty) { 2 } else { minimum_should_match }
+
+      minimum_should_match = if (minimum_should_match < 2) { 2 } else { minimum_should_match }
 
       val json =
         ("size" -> numRecs) ~
@@ -452,6 +471,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
               ("sort" -> sort)
 
       val compactJson = compact(render(json))
+      logger.info(s"Montagem da query :\n")
 
       logger.info(s"Query:\n$compactJson")
       (compactJson, events)
@@ -467,7 +487,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       var result = if (itens.nonEmpty) {
         itens.map { item =>
           val m = EsClient.getSource(esIndex, esType, item)
-          if (m != null) {
+          if (m != null && m.get("category") != null) {
             val s: Seq[String] = m.get("category").asInstanceOf[util.ArrayList[String]].asScala
             val t: String = s(0)
 
@@ -637,7 +657,14 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
 
     var categories: Seq[String] = Seq.empty
     categoryItems.map { a =>
-      val strCat: String = a.asInstanceOf[String]
+
+      val strCat: String = try {
+        a.asInstanceOf[String]
+      } catch {
+        case cce: ClassCastException =>
+          println("Product not trained")
+          ""
+      }
       categories = categories :+ strCat
     }
 
@@ -760,14 +787,37 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
     val rActions = queryEventNames.map { action =>
       var items = Seq.empty[String]
 
+      //TODO ajustar essa variavel dinamicamente
       for (event <- recentEvents) { // todo: use indidatorParams for each indicator type
+        //println(indicatorParams(action).maxItemsPerUser)
         if (event.event == action && items.size < indicatorParams(action).maxItemsPerUser) {
+          //if (event.event == action && items.size <= 5) {
           items = event.targetEntityId.get +: items
           // todo: may throw exception and we should ignore the event instead of crashing
         }
         // userBias may be None, which will cause no JSON output for this
       }
       BoostableCorrelators(action, items.distinct, userEventsBoost)
+
+      /*val results = items.foldLeft(Map[String,Int]()) {
+        (acc,item) =>
+          val key = item.asInstanceOf[String]
+          // println(key + "\n")
+
+          val count = acc.getOrElse(key, 0 )
+
+          // println(key + "(" + count + ")\n")
+
+          acc + (key -> (count + 1))
+      }
+      val sorted = results.toSeq.sortBy(_._2)
+      sorted.map{ result =>
+        println(result)
+      }
+*/
+      //results.sortBy(_(2))
+
+      //BoostableCorrelators(action, items, userEventsBoost)
     }
     (rActions, recentEvents)
   }
