@@ -767,7 +767,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
         // targetEntityType = None,
         // limit = Some(maxQueryEvents), // this will get all history then each action can be limited before using in
         startTime = Some(DateTime.now().minusDays(1).toDateTimeISO),
-        limit = Some(-1),
+        limit = Some(1000),
         // the query
         latest = false,
         // set time limit to avoid super long DB access
@@ -784,23 +784,24 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
         Seq.empty[Event]
     }
 
-    //println(recentEvents);
-
     val userEventBias = query.userBias.getOrElse(userBias)
     val userEventsBoost = if (userEventBias > 0 && userEventBias != 1) Some(userEventBias) else None
     val rActions = queryEventNames.map { action =>
+
       var items = Seq.empty[String]
 
       //TODO ajustar essa variavel dinamicamente
       for (event <- recentEvents) { // todo: use indidatorParams for each indicator type
         //println(indicatorParams(action).maxItemsPerUser)
-        if (event.event == action && items.size < indicatorParams(action).maxItemsPerUser) {
+        if (event.event == action && items.distinct.size < indicatorParams(action).maxItemsPerUser) {
           //if (event.event == action && items.size <= 5) {
           items = event.targetEntityId.get +: items
+
           // todo: may throw exception and we should ignore the event instead of crashing
         }
         // userBias may be None, which will cause no JSON output for this
       }
+
       BoostableCorrelators(action, items.distinct, userEventsBoost)
 
       /*val results = items.foldLeft(Map[String,Int]()) {
