@@ -766,9 +766,10 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
         eventNames = Some(queryEventNames), // get all and separate later
         // targetEntityType = None,
         // limit = Some(maxQueryEvents), // this will get all history then each action can be limited before using in
-        limit = Some(10),
+        startTime = Some(DateTime.now().minusDays(1).toDateTimeISO),
+        limit = Some(-1),
         // the query
-        latest = true,
+        latest = false,
         // set time limit to avoid super long DB access
         timeout = Duration(200, "millis")).toSeq
     } catch {
@@ -782,6 +783,8 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
         logger.error(s"Error when reading recent events. Trying to continue by ignoring the error. $e")
         Seq.empty[Event]
     }
+
+    //println(recentEvents);
 
     val userEventBias = query.userBias.getOrElse(userBias)
     val userEventsBoost = if (userEventBias > 0 && userEventBias != 1) Some(userEventBias) else None
