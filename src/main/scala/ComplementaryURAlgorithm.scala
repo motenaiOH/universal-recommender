@@ -766,6 +766,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
         eventNames = Some(queryEventNames), // get all and separate later
         // targetEntityType = None,
         // limit = Some(maxQueryEvents), // this will get all history then each action can be limited before using in
+        limit = Some(10),
         // the query
         latest = true,
         // set time limit to avoid super long DB access
