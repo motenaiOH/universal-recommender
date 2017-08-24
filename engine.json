@@ -7,7 +7,7 @@
     "params" : {
       "name": "grao_recomendacao_events",
       "appName": "grao_recomendacao",
-      "eventNames": ["purchase","view","category-preference","gender-preference","color-preference"],
+      "eventNames": ["purchase","view","list","category-preference","gender-preference","color-preference"],
       "minEventsPerUser": 3
     }
   },
@@ -34,13 +34,18 @@
             "name": "purchase",          
           },{
             "name": "view",
+            "maxItemsPerUser": 50,
             "maxCorrelatorsPerItem": 50,
-            "maxItemsPerUser":5,
+            "minLLR": 5
+          },{
+            "name": "list",
+            "maxCorrelatorsPerItem": 50,
+            "maxItemsPerUser":10,
             "minLLR": 5
           },{
             "name": "category-preference",
             "maxCorrelatorsPerItem": 50,
-            "maxItemsPerUser":3,
+            "maxItemsPerUser": 50,
             "minLLR": 5
           },{	
             "name": "gender-preference",
@@ -49,7 +54,7 @@
           },{
             "name": "color-preference",
             "maxCorrelatorsPerItem": 3,
-            "maxItemsPerUser":2,
+            "maxItemsPerUser":3,
             "minLLR": 5
           }
         ],    

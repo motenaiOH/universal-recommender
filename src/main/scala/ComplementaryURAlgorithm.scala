@@ -83,9 +83,22 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       eventName -> DefaultIndicatorParams()
     }.toMap
   } else if (ap.indicators.nonEmpty) { // using indicators for fined tuned control
+
     ap.indicators.get.map { indicatorParams =>
+
+      val maxItens = if (indicatorParams.name == "view") {
+        50
+      } else if (indicatorParams.name == "category-preference") {
+        50
+      } else if (indicatorParams.name == "gender-preference") {
+        1
+      } else if (indicatorParams.name == "color-preference") {
+        3
+      } else {
+        500
+      }
       indicatorParams.name -> DefaultIndicatorParams(
-        maxItemsPerUser = indicatorParams.maxItemsPerUser.getOrElse(DefaultURAlgoParams.MaxEventsPerEventType),
+        maxItemsPerUser = maxItens,
         maxCorrelatorsPerItem = indicatorParams.maxCorrelatorsPerItem.getOrElse(DefaultURAlgoParams.MaxCorrelatorsPerEventType),
         minLLR = indicatorParams.minLLR)
     }.toMap
@@ -371,7 +384,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
             ItemScore(hit.getId, hit.getScore.toDouble)
           }
         }
-        logger.info(s"Query: ${queryStr} ")
+        //  logger.info(s"Query: ${queryStr} ")
         logger.info(s"Results [${query.engine.getOrElse("Null")}]: ${searchHits.getHits.length} retrieved of a possible ${searchHits.totalHits()}")
         recs
 
@@ -429,7 +442,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
     try {
       // create a list of all query correlators that can have a bias (boost or filter) attached
 
-      val (boostable, events) = getBiasedRecentUserActions(query)
+      val (boostable, events, boostableDown) = getBiasedRecentUserActions(query)
       // since users have action history and items have correlators and both correspond to the same "actions" like
       // purchase or view, we'll pass both to the query if the user history or items correlators are empty
       // then metadata or backfill must be relied on to return results.
@@ -438,7 +451,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
 
       val must = buildQueryMust(query, boostable)
 
-      val mustNot = buildQueryMustNot(query, events)
+      val mustNot = buildQueryMustNot(query, events, boostableDown)
 
       val sort = buildQuerySort(query.itemSet.nonEmpty)
 
@@ -631,8 +644,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
   }
 
   /** Build not must query part */
-  def buildQueryMustNot(query: Query, events: Seq[Event]): JValue = {
-
+  def buildQueryMustNot(query: Query, events: Seq[Event], noInteractionItensList: Seq[BoostableCorrelators]): JValue = {
     // first get the excluded items
     val mustNotItems: JValue = render(
       "ids" ->
@@ -673,7 +685,21 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
     }
 
     val mustNotCategories: JValue = render("terms" -> ("category" -> categories) ~ ("boost" -> 0))
-    exclusionProperties :+ mustNotItems :+ mustNotCategories
+
+    val mustNotItensNoInteraction: Seq[JValue] = noInteractionItensList.map {
+      case BoostableCorrelators(actionName, itemIDs, boost) => {
+        if (actionName == "list") {
+          render(
+            "ids" ->
+              ("values" -> itemIDs) ~
+              ("boost" -> 0))
+        } else {
+          render("")
+        }
+      }
+    }
+
+    exclusionProperties :+ mustNotItems :+ mustNotCategories :+ mustNotItensNoInteraction(2)
   }
 
   /** Build sort query part */
@@ -753,7 +779,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
   }
 
   /** Get recent events of the user on items to create the recommendations query from */
-  def getBiasedRecentUserActions(query: Query): (Seq[BoostableCorrelators], Seq[Event]) = {
+  def getBiasedRecentUserActions(query: Query): (Seq[BoostableCorrelators], Seq[Event], Seq[BoostableCorrelators]) = {
 
     val recentEvents = try {
       LEventStore.findByEntity(
@@ -767,7 +793,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
         // targetEntityType = None,
         // limit = Some(maxQueryEvents), // this will get all history then each action can be limited before using in
         startTime = Some(DateTime.now().minusDays(1).toDateTimeISO),
-        limit = Some(1000),
+        limit = Some(-1),
         // the query
         latest = false,
         // set time limit to avoid super long DB access
@@ -784,47 +810,68 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
         Seq.empty[Event]
     }
 
+    var recentEventsLastFirst = Seq.empty[Event]
+    for (event <- recentEvents) {
+      recentEventsLastFirst = event +: recentEventsLastFirst
+    }
+
+    var rItems = Seq.empty[String]
     val userEventBias = query.userBias.getOrElse(userBias)
     val userEventsBoost = if (userEventBias > 0 && userEventBias != 1) Some(userEventBias) else None
     val rActions = queryEventNames.map { action =>
-
       var items = Seq.empty[String]
-
       //TODO ajustar essa variavel dinamicamente
-      for (event <- recentEvents) { // todo: use indidatorParams for each indicator type
-        //println(indicatorParams(action).maxItemsPerUser)
-        if (event.event == action && items.distinct.size < indicatorParams(action).maxItemsPerUser) {
-          //if (event.event == action && items.size <= 5) {
-          items = event.targetEntityId.get +: items
-
-          // todo: may throw exception and we should ignore the event instead of crashing
+      if (action != "list") {
+        for (event <- recentEventsLastFirst) { // todo: use indidatorParams for each indicator type
+          if (event.event == action && items.distinct.size < indicatorParams(action).maxItemsPerUser) {
+            //if (event.event == action && items.size <= 5) {
+            items = event.targetEntityId.get +: items
+            rItems = event.targetEntityId.get +: rItems
+            // todo: may throw exception and we should ignore the event instead of crashing
+          }
         }
         // userBias may be None, which will cause no JSON output for this
+        println(action + ":  " + items.distinct.size + " / " + indicatorParams(action).maxItemsPerUser)
       }
-
       BoostableCorrelators(action, items.distinct, userEventsBoost)
-
-      /*val results = items.foldLeft(Map[String,Int]()) {
-        (acc,item) =>
-          val key = item.asInstanceOf[String]
-          // println(key + "\n")
-
-          val count = acc.getOrElse(key, 0 )
-
-          // println(key + "(" + count + ")\n")
-
-          acc + (key -> (count + 1))
-      }
-      val sorted = results.toSeq.sortBy(_._2)
-      sorted.map{ result =>
-        println(result)
-      }
-*/
-      //results.sortBy(_(2))
-
-      //BoostableCorrelators(action, items, userEventsBoost)
     }
-    (rActions, recentEvents)
+
+    rItems = rItems.distinct
+
+    val rActionsDown = queryEventNames.map { action =>
+      var items = Seq.empty[String]
+      var itemsToExclude = Seq.empty[String]
+
+      if (action == "list") {
+        for (event <- recentEventsLastFirst) {
+          if (event.event == action) {
+            items = event.targetEntityId.get +: items
+          }
+        }
+
+        val results = items.foldLeft(Map[String, Int]()) {
+          (acc, item) =>
+            val key = item.asInstanceOf[String]
+            val count = acc.getOrElse(key, 0)
+            acc + (key -> (count + 1))
+        }
+        val sorted = results.toSeq.sortBy(_._2)
+
+        sorted.map { result =>
+          val isEmpty = rItems.filter(item => item == result._1)
+          val exist = !isEmpty.isEmpty
+
+          if (result._2 > 6) {
+            if (!exist) {
+              itemsToExclude = result._1 +: itemsToExclude
+            }
+          }
+        }
+        println(action + ":  " + itemsToExclude.distinct.size + " / " + indicatorParams(action).maxItemsPerUser)
+      }
+      BoostableCorrelators(action, itemsToExclude, Some(0))
+    }
+    (rActions, recentEventsLastFirst, rActionsDown)
   }
 
   /** get all metadata fields that potentially have boosts (not filters) */
