@@ -73,17 +73,6 @@
             "endDate": "ISO8601-date"
           },
           {
-            "name": "trendRank",
-            "type": "trending",
-            "eventNames": ["purchase"],
-            "duration": "3 days"
-          },
-          {
-            "name": "hotRank",
-            "type": "hot",
-            "duration": "3 days"
-          },
-          {
             "name": "preferredRank",
             "type": "userDefined"
           },

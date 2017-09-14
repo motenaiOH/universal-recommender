@@ -53,9 +53,15 @@ case class Query(
 /** Used to specify how Fields are represented in engine.json */
 case class Field( // no optional values for fields, whne specified
   name: String, // name of metadata field
-  values: Seq[String], // fields can have multiple values like tags of a single value as when using hierarchical
-  // taxonomies
-  bias: Float) // any positive value is a boost, negative is a filter
+  values: Seq[String], // fields can have multiple values like tags of a single value as when using hierarchical  // taxonomies
+  bias: Float, // any positive value is a boost, negative is a filter
+  comparisonRules: Option[List[ComparisonRule]]) // identify comparison mode.
+    extends Serializable
+
+/** Used to specify the date range for a query */
+case class ComparisonRule(
+  operator: Option[String], // empty strings means no filter
+  value: Option[Float]) // both empty should be ignored
     extends Serializable
 
 /** Used to specify the date range for a query */

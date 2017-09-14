@@ -385,7 +385,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
           }
         }
         //  logger.info(s"Query: ${queryStr} ")
-        logger.info(s"Results [${query.engine.getOrElse("Null")}]: ${searchHits.getHits.length} retrieved of a possible ${searchHits.totalHits()}")
+        logger.info(s"Results: ${searchHits.getHits.length} retrieved of a possible ${searchHits.totalHits()}")
         recs
 
       case _ =>
@@ -443,6 +443,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       // create a list of all query correlators that can have a bias (boost or filter) attached
 
       val (boostable, events, boostableDown) = getBiasedRecentUserActions(query)
+
       // since users have action history and items have correlators and both correspond to the same "actions" like
       // purchase or view, we'll pass both to the query if the user history or items correlators are empty
       // then metadata or backfill must be relied on to return results.
@@ -454,6 +455,8 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       val mustNot = buildQueryMustNot(query, events, boostableDown)
 
       val sort = buildQuerySort(query.itemSet.nonEmpty)
+
+      val scriptTag = getFilteringScriptFieldRange(query)
 
       var count = 0
       boostable.map {
@@ -481,6 +484,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
               ("must" -> must) ~
               ("must_not" -> mustNot) ~
               ("minimum_should_match" -> minimum_should_match))) ~
+              ("filter" -> scriptTag(0)) ~
               ("sort" -> sort)
 
       val compactJson = compact(render(json))
@@ -605,6 +609,9 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       Seq.empty
     }
 
+    println("getBiasedSimilarItems(query)")
+    println(getBiasedSimilarItems(query))
+
     val similarItemsFilter: Seq[FilterCorrelators] = if (itemBias < 0f) {
       getBiasedSimilarItems(query).map(_.toFilterCorrelators)
     } else {
@@ -613,6 +620,8 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
 
     val filteringMetadata = getFilteringMetadata(query)
     val filteringDateRange = getFilteringDateRange(query)
+    val fileringFieldRange = getFilteringFieldRange(query)
+
     val allFilteringCorrelators = recentUserHistoryFilter ++ similarItemsFilter ++ filteringMetadata
 
     val mustFields: Seq[JValue] = allFilteringCorrelators.map {
@@ -636,7 +645,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       }
     }
 
-    mustFields ++ filteringDateRange ++ itemSetFields
+    mustFields ++ filteringDateRange ++ itemSetFields ++ fileringFieldRange
   }
 
   def Buffer(data: String) {
@@ -654,11 +663,15 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
     // then get the properties used in must_not clause
     val exclusionFields = query.fields.getOrElse(Seq.empty).filter(_.bias == 0)
     val exclusionProperties: Seq[JValue] = exclusionFields.map {
-      case Field(name, value, bias) =>
-        render(
-          "terms" ->
-            (name -> value) ~
-            ("boost" -> 0))
+      case Field(name, value, bias, comparisonRules) =>
+        if (comparisonRules == None) {
+          render(
+            "terms" ->
+              (name -> value) ~
+              ("boost" -> 0))
+        } else {
+          render("")
+        }
     }
 
     val categoryItems: Seq[Object] = if (query.itemSet.nonEmpty) {
@@ -831,7 +844,7 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
           }
         }
         // userBias may be None, which will cause no JSON output for this
-        println(action + ":  " + items.distinct.size + " / " + indicatorParams(action).maxItemsPerUser)
+        println(action + " (i) :  " + items.distinct.size + " / " + indicatorParams(action).maxItemsPerUser)
       }
       BoostableCorrelators(action, items.distinct, userEventsBoost)
     }
@@ -861,13 +874,13 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
           val isEmpty = rItems.filter(item => item == result._1)
           val exist = !isEmpty.isEmpty
 
-          if (result._2 > 6) {
+          /*if (result._2 > 20) {
             if (!exist) {
               itemsToExclude = result._1 +: itemsToExclude
             }
-          }
+          }*/
         }
-        println(action + ":  " + itemsToExclude.distinct.size + " / " + indicatorParams(action).maxItemsPerUser)
+        println(action + " (e) :  " + itemsToExclude.distinct.size + " / " + indicatorParams(action).maxItemsPerUser)
       }
       BoostableCorrelators(action, itemsToExclude, Some(0))
     }
@@ -986,6 +999,64 @@ class ComplementaryURAlgorithm(val ap: URAlgorithmParams)
       Seq.empty
     }
     json
+  }
+
+  /** get part of query for dates and date ranges */
+
+  def getFilteringScriptFieldRange(query: Query): JValue = {
+
+    val filteringFields = query.fields.getOrEmpty.filter(_.comparisonRules != None)
+    if (filteringFields != Seq.empty) {
+      val filteringProperties: JValue = filteringFields.map {
+        case Field(name, value, bias, comparisonRules) =>
+
+          var operatorBefore: String = "<="
+          var operatorAfter: String = ">="
+
+          var valueBefore: Float = 1000000000
+          var valueAfter: Float = 1
+
+          comparisonRules.getOrEmpty.map(rule =>
+            if ((rule.operator.getOrElse("none") == ">") || (rule.operator.getOrElse("none") == ">=")) {
+              operatorAfter = rule.operator.getOrElse(">=");
+              valueAfter = rule.value.getOrElse(1);
+            } else if ((rule.operator.getOrElse("none") == "<") || (rule.operator.getOrElse("none") == "<=")) {
+              operatorBefore = rule.operator.getOrElse("<=");
+              valueBefore = rule.value.getOrElse(1000000000);
+            })
+
+          render(
+            "script" ->
+              (
+                "script" -> s"Float.parseFloat(doc['$name'].value) $operatorAfter $valueAfter && Float.parseFloat(doc['$name'].value) $operatorBefore $valueBefore"))
+      }
+
+      filteringProperties
+    } else {
+      render(
+        "script" ->
+          (
+            "script" -> "Float.parseFloat(doc['$name'].value) > 0 && Float.parseFloat(doc['$name'].value) < 1000000000"))
+    }
+  }
+
+  def getFilteringFieldRange(query: Query): Seq[JValue] = {
+
+    val filteringFields = query.fields.getOrEmpty.filter(_.comparisonRules != None)
+    if (filteringFields != Seq.empty) {
+      val filteringProperties: Seq[JValue] = filteringFields.map {
+        case Field(name, value, bias, comparisonRules) =>
+          render(
+            "range" ->
+              (name ->
+                ("gte" -> "1") ~
+                ("lte" -> "9")))
+      }
+
+      filteringProperties
+    } else {
+      Seq.empty
+    }
   }
 
   def getMappings: Map[String, (String, Boolean)] = {

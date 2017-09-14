@@ -630,7 +630,7 @@ class URAlgorithm(val ap: URAlgorithmParams)
     // then get the properties used in must_not clause
     val exclusionFields = query.fields.getOrElse(Seq.empty).filter(_.bias == 0)
     val exclusionProperties: Seq[JValue] = exclusionFields.map {
-      case Field(name, value, bias) =>
+      case Field(name, value, bias, comparisonRules) =>
         render(
           "terms" ->
             (name -> value) ~
